@@ -1,24 +1,23 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
-
+import React from "react";
+import LoginForm from "./component/loginForm";
+import { useSelector} from "react-redux";
+import { loginState } from "./store/loginStore";
+import Welcome from "./component/welcome";
 function App() {
+  const a = useSelector(loginState);
+  console.log(a);
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      {!a.auth ? (
+        <div>
+          <div>로그인</div>
+          <LoginForm />
+        </div>
+      ) : (
+        <div>
+          <Welcome />
+        </div>
+      )}
     </div>
   );
 }
