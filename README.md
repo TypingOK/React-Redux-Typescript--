@@ -1,46 +1,206 @@
-# Getting Started with Create React App
+리액트에 리덕스를 적용해보기 위해 간단하게 만들어본 로그인 예제입니다.
+실제 로그인엔 백엔드와 연결 해야하기 때문에 달라질 수 있습니다.
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+```
+import { store } from "./store";
+import { Provider } from "react-redux";
+ 
+const root = ReactDOM.createRoot(
+  document.getElementById("root") as HTMLElement
+);
+root.render(
+  <React.StrictMode>
+    <Provider store={store}>
+      <App />
+    </Provider>
+  </React.StrictMode>
+);
 
-## Available Scripts
+index.tsx입니다.
+간단하게 store의 데이터들을 자식들이 전부 받을 수 있도록 최고 상위 컴포넌트에 등록합니다.
 
-In the project directory, you can run:
+import React from "react";
+import LoginForm from "./component/loginForm";
+import { useSelector} from "react-redux";
+import { loginState } from "./store/loginStore";
+import Welcome from "./component/welcome";
+function App() {
+  const a = useSelector(loginState);
+  console.log(a);
+  return (
+    <div>
+      {!a.auth ? (
+        <div>
+          <div>로그인</div>
+          <LoginForm />
+        </div>
+      ) : (
+        <div>
+          <Welcome />
+        </div>
+      )}
+    </div>
+  );
+}
+ 
+export default App;
+```
+메인 화면인 App.tsx 파일입니다.
+store에 저장된 로그인 상태가 true가 아니면 로그인 폼이 나오고 true면 환영한다는 컴포넌트가 출력 되도록 짰습니다.
+useSelector를 이용하여 store에서 데이터를 가져옵니다.
+```
+import { configureStore } from "@reduxjs/toolkit";
+import UserLoginReducer from "./loginStore";
+export const store = configureStore({
+  reducer: {
+    helloWorld: UserLoginReducer,
+  },
+});
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+```
+store 폴더의 index.tsx 파일입니다. 이 간단한 예제의 모든 store를 하나로 합치는 공간입니다. 
+그리고 합쳐진 store를 RootState라는 이름으로 외부에 export 합니다.
+dispatch 함수도 마찬가지로 외부에 export 합니다.
+```
+import { createSlice } from "@reduxjs/toolkit";
+import type { PayloadAction } from "@reduxjs/toolkit";
+import { RootState } from "./index";
 
-### `yarn start`
+export const userDB = [{ id: "test", password: "test" }];
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+export interface UserLoginState {
+  id: string;
+  password: string;
+  auth: boolean;
+}
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+const initialState: UserLoginState = {
+  id: "",
+  password: "",
+  auth: false,
+};
 
-### `yarn test`
+// login: (state, action: PayloadAction<{ id: string; password: string }>) => {
+//   console.log(action);
+//   userDB.forEach((e) => {
+//     if (
+//       e.id === action.payload.id &&
+//       e.password === action.payload.password
+//     ) {
+//       state.id = action.payload.id;
+//       state.password = action.payload.password;
+//       state.login = true;
+//       console.log("hi");
+//     }
+//   });
+// },
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-### `yarn build`
+export const UserLoginSlice = createSlice({
+  name: "hello-world",
+  initialState,
+  reducers: {
+    login: {
+      reducer: (
+        state,
+        action: PayloadAction<{ id: string; password: string; auth: boolean }>
+      ) => {
+        console.log(action);
+        state.id = action.payload.id;
+        state.password = action.payload.password;
+        state.auth = action.payload.auth;
+      },
+      prepare: ({ id, password }: { id: string; password: string }) => {
+        let userId = "";
+        let userPassword = "";
+        let userAuth = false;
+        userDB.forEach((e) => {
+          if (e.id === id && e.password === password) {
+            console.log(id, password);
+            userId = id;
+            userPassword = password;
+            userAuth = true;
+            return false;
+          }
+        });
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+        console.log(userId, userPassword);
+        return {
+          payload: { id: userId, password: userPassword, auth: userAuth },
+        };
+      },
+    },
+    logout: (state) => {
+      state.id = "";
+      state.password = "";
+      state.auth = false;
+    },
+  },
+});
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+export const { login, logout } = UserLoginSlice.actions;
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+export const loginState = (state: RootState) => state.helloWorld;
 
-### `yarn eject`
+export default UserLoginSlice.reducer;
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+사실상 이 예제의 핵심인 loginStore.tsx 파일입니다.
+이곳에서 로그인과 관련된 store가 들어있습니다.
+state의 타입을 지정하기 위해 UserLoginState라는 인터페이스를 선언 한 후 들어갈 내용물이 어떤 타입인지 알려줍니다.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+그 다음 initialState를 통해 기본적으로 store에 어떤 상태가 저장되는지 선언합니다.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+createSlice를 통해 리덕스의 일부분으로 만듭니다.
+하나의 리덕스가 모든 상태를 관리하게 되면 유지보수가 어렵기 때문에 redux toolkit의 도움을 받아 여러개의 작은 store로 분리하고 하나로 합칠 수 있습니다.
+처음 store의 상태를 알려주고 reducers를 통해 어떤 액션을 할 수 있고 상태를 어떻게 저장할 것인지 지정합니다.
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+그리고 각자 action과 상태를 외부로 export 합니다.
+```
+import React, { useState } from "react";
+import { useDispatch } from "react-redux";
+import { login } from "../store/loginStore";
+ 
+interface userLoginInfo {
+  id: string;
+  password: string;
+}
+ 
+const LoginForm = () => {
+  const [loginInfo, setLoginInfo] = useState<userLoginInfo>({
+    id: "",
+    password: "",
+  });
+ 
+  const dispatch = useDispatch();
+ 
+  const onChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setLoginInfo((prev) => ({
+      ...prev,
+      [event.target.name]: event.target.value,
+    }));
+  };
+ 
+  const onClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    console.log(loginInfo);
+    dispatch(login({ id: loginInfo.id, password: loginInfo.password }));
+  };
+  return (
+    <div>
+      <div>
+        아이디<input type="text" name="id" onChange={onChange}></input>
+      </div>
+      <div>
+        비밀번호<input type="text" name="password" onChange={onChange}></input>
+      </div>
+      <button onClick={onClick}>login</button>
+    </div>
+  );
+};
+ 
+export default LoginForm;
+```
+useDispatch를 통해 store에서 사용할 액션을 가져옵니다. 로그인 버튼이 눌렸을 때 store에서 export 한 액션의 이름으로 상태를 변화 시키도록 합니다.
